@@ -19,7 +19,7 @@ type Queue interface {
 	// GetAndDoing 获取一个任务，修改任务状态为正在开始中.
 	GetAndDoing(tube string, conn interface{}) (key string, value []byte, err error)
 	// Exists 判定一个人是否存在, 该任务必须为未开始，正在完成中.
-	Exists(key string) (bool, error)
+	Exists(key string) bool
 	// RestoreOne 还原一个任务.
 	RestoreOne(tube string, conn interface{}) (bool, error)
 	// Usr1 添加一个通知，如果有数据，通知用户.

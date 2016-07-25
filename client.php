@@ -24,7 +24,7 @@ class TaskClient
 
     /**
     * @param string  $address 网络连接地址.
-    * @param integer $port    端口. 
+    * @param integer $port    端口.
     */
     public function __construct($address = '', $port = 0) {
         if (!empty($address)) {
@@ -136,12 +136,13 @@ class TaskClient
      *
      * @param string $key  唯一标示KEY.
      * @param string $data 数据.
+     * @param string $timeout 超时.
      *
      * @return boolean
      */
-    public function GetReturn($key, &$data)
+    public function GetReturn($key, &$data, $timeout)
     {
-        $str = $this->format(array("GetReturn", $key));
+        $str = $this->format(array("GetReturn", $key, $timeout));
         $ok = $this->finish($str, $tmp);
         if ($ok) {
             $data = $tmp[0];
@@ -201,10 +202,10 @@ class TaskClient
     {
         if (empty(self::$socket)) {
             $this->connect();
-        } 
+        }
         if (!self::$status) {
             return false;
-        } 
+        }
 
         $int = @socket_write(self::$socket, $str);
         self::$errno = socket_last_error(self::$socket);
@@ -299,7 +300,7 @@ class TaskClient
      *
      * @return string
      */
-    public function getErrMsg()
+    public function GetErrMsg()
     {
         return self::$errmsg;
     }
@@ -309,7 +310,7 @@ class TaskClient
      *
      * @return string
      */
-    public function getErrNo()
+    public function GetErrNo()
     {
         return self::$errno;
     }

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -220,45 +221,55 @@ func SetReturn(conn link.Connect, d [][]byte) {
 func getReturn(conn link.Connect, d [][]byte) (err error) {
 	l := len(d)
 	if l < 2 {
-		return conn.WriteString("405", "参数错误")
+		return conn.WriteString("405", "请传key")
 	}
-	d = d[:2]
+
+	timeout := time.Minute
+	if d[2] != nil {
+		tmp, err := strconv.Atoi(string(d[2]))
+		if err != nil {
+			timeout = time.Second * time.Duration(tmp)
+		}
+	}
+
+	// 缓存中获取数据.
 	key := string(d[1])
 	val, ok, err := DefaultCache.Get(key)
 	if err != nil {
 		SystemERR(conn, err)
-		return
+		return err
 	} else if ok {
 		return conn.WriteString("1", "成功", string(val))
 	}
-	ok, err = DefaultQueue.Exists(key)
-	if err != nil {
-		SystemERR(conn, err)
-		return
-	}
-	if ok {
-		val, err = DefaultCache.GetAndTimeOut(key, time.Minute*1, conn.GetC())
+
+	//  判定队列是否存在该数据.
+	ok = DefaultQueue.Exists(key)
+	if !ok {
+		// 队列数据不存在.
+		val, ok, err := DefaultCache.Get(key)
 		if err != nil {
-			if err.Error() == "timeout" {
-				return conn.WriteString("408", "超时", string(val))
-			} else if err.Error() == "EOF" {
-				return
-			}
 			SystemERR(conn, err)
-			return
+			return err
+		} else if ok {
+			return conn.WriteString("1", "成功", string(val))
+		} else {
+			return conn.WriteString("404", "没有发现", string(val))
 		}
-		return conn.WriteString("1", "成功", string(val))
 	}
-	val, ok, err = DefaultCache.Get(key)
+
+	// 等待获取值.
+	val, err = DefaultCache.GetAndTimeOut(key, timeout, conn.GetC())
 	if err != nil {
+		if err.Error() == "timeout" {
+			return conn.WriteString("408", "超时")
+		} else if err.Error() == "EOF" {
+			return err
+		}
 		SystemERR(conn, err)
-		return
-	} else if ok {
-		return conn.WriteString("1", "成功", string(val))
+		return err
 	}
 
-	return conn.WriteString("404", "不存在")
-
+	return conn.WriteString("1", "成功", string(val))
 }
 
 func addJob(conn link.Connect, d [][]byte) (err error) {

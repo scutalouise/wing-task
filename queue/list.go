@@ -130,21 +130,21 @@ func (Q *queue) GetAndDoing(tube string, conn interface{}) (key string, value []
 }
 
 // Exists 判定一个人是否存在, 该任务必须为未开始，正在完成中.
-func (Q *queue) Exists(key string) (bool, error) {
+func (Q *queue) Exists(key string) bool {
 	Q.Lock()
 	defer Q.Unlock()
 
 	off := h32.DefaultHash.GetOffset(key, BlockSize, BucketSize)
 	if bucket := Q.db[off]; bucket != nil {
 		if itm, ok := bucket[key]; ok {
-			if itm.status == READY {
+			if itm.status == READY || itm.status == RESERVED {
 
-				return true, nil
+				return true
 			}
 		}
 	}
 
-	return false, nil
+	return false
 }
 
 // StartAndGC 启动垃圾回收.
@@ -222,6 +222,11 @@ func (Q *queue) RestoreOne(key string, conn interface{}) (bool, error) {
 						channels: make(map[chan interface{}]interface{}, 1),
 					}
 					Q.tube[itm.tube] = tubes
+				} else {
+					for channel := range tubes.channels {
+						channel <- nil
+					}
+					tubes.channels = make(map[chan interface{}]interface{}, 1)
 				}
 				tubes.list.Put(key)
 				if logs, ok := Q.log[conn]; ok {
