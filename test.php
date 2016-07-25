@@ -41,11 +41,11 @@ function GetReturn($key) {
     }
 }
 
- Usr1();
+//  Usr1();
 //
 // echo serialize(array(1,2));
 
-// Addjob();
+Addjob();
 // SetReturn();
 
 //$key = $argv[1];

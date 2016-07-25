@@ -264,7 +264,6 @@ class TaskClient
             }
         }
         $this->doExt();
-
         for ($i = 0; $i < $len; $i++) {
             while ($str = @socket_read(self::$socket, 1024, PHP_NORMAL_READ)) {
                 $attr = strpos($str, "$");
@@ -274,6 +273,7 @@ class TaskClient
                     if ($l <= 0) {
                         $data[$i] = '';
                     }
+                    break;
                 }
             }
             $this->doExt();
