@@ -222,7 +222,11 @@ class TaskClient
         }
 
         $tmp = array();
-        $ok = $this->getOneRequest($d);
+        try {
+            $ok = $this->getOneRequest($d);
+        } catch (Exception $e) {
+            return false;
+        }
         if ($ok) {
             if ($d[0] == 1) {
                 $len = count($d);
@@ -250,49 +254,43 @@ class TaskClient
      */
     private function getOneRequest(&$data)
     {
-        $ok = false;
-        while (!$ok && $str = @socket_read(self::$socket, 1024, PHP_NORMAL_READ)) {
-            self::$errno = socket_last_error(self::$socket);
-            if (!empty(self::$errno)) {
-                self::$errmsg = socket_strerror(self::$errno);
-
-                return false;
-            }
+        // 查询到头
+        $len = 0;
+        while ($str = @socket_read(self::$socket, 1024, PHP_NORMAL_READ)) {
             $attr = strpos($str, "*");
             if ($attr !== false) {
-                $ok = true;
                 $len = substr($str, $attr + 1);
-                for ($i = 0; $i < $len; $i++) {
-                    while (true) {
-                        $str = @socket_read(self::$socket, 1024, PHP_NORMAL_READ);
-                        self::$errno = socket_last_error(self::$socket);
-                        if (!empty(self::$errno)) {
-                            self::$errmsg = socket_strerror(self::$errno);
+                break;
+            }
+        }
+        $this->doExt();
 
-                            return false;
-                        }
-                        $attr = strpos($str, "$");
-                        if ($attr !== false) {
-                            $l = substr($str, $attr + 1);
-                            if ($l > 0) {
-                                $data[$i] = @socket_read(self::$socket, intval($l), PHP_BINARY_READ);
-                                self::$errno = socket_last_error(self::$socket);
-                                if (!empty(self::$errno)) {
-                                    self::$errmsg = socket_strerror(self::$errno);
-
-                                    return false;
-                                }
-                            } else {
-                                $data[$i] = "";
-                            }
-                            break;
-                        }
+        for ($i = 0; $i < $len; $i++) {
+            while ($str = @socket_read(self::$socket, 1024, PHP_NORMAL_READ)) {
+                $attr = strpos($str, "$");
+                if ($attr !== false) {
+                    $l = substr($str, $attr + 1);
+                    $data[$i] = @socket_read(self::$socket, intval($l), PHP_BINARY_READ);
+                    if ($l <= 0) {
+                        $data[$i] = '';
                     }
                 }
             }
+            $this->doExt();
         }
 
         return true;
+    }
+
+    private function  doExt() {
+        self::$errno = socket_last_error(self::$socket);
+        if (!empty(self::$errno)) {
+            self::$errmsg = socket_strerror(self::$errno);
+            if (self::$errmsg == 'EOF') {
+                self::$status = false;
+            }
+            throw  new Exception(self::$errmsg, self::$errno);
+        }
     }
 
     /**
