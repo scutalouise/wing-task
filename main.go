@@ -320,6 +320,7 @@ func getJob(conn link.Connect, d [][]byte) (err error) {
 	} else if key == "" || val == nil {
 		return conn.WriteString("0", "没有拿到")
 	}
+
 	return conn.WriteString("1", "成功", key, string(val))
 }
 

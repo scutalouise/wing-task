@@ -3,7 +3,6 @@ package link
 import (
 	"bufio"
 	"errors"
-	"io"
 	"log"
 	"net"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 	"time"
 	"bytes"
 	"fmt"
+	"io"
 )
 
 // server 服务结构体.
@@ -122,11 +122,11 @@ func NewConnect(rw net.Conn) Connect {
 
 // connect 连接结构体.
 type connect struct {
-	sync.RWMutex                  // 读写锁.
-	conn         net.Conn         // 网络连接，接口对象.
-	buf          *bufio.Reader    // buf读取缓存.
-	srv          *server          // 服务结构对象.
-	C            chan interface{} // 通知网络连接是否断开.
+	sync.RWMutex          // 读写锁.
+	conn net.Conn         // 网络连接，接口对象.
+	buf  *bufio.Reader    // buf读取缓存.
+	srv  *server          // 服务结构对象.
+	C    chan interface{} // 通知网络连接是否断开.
 }
 
 // Serve 网络连接服务，不断读取数据.
@@ -163,7 +163,7 @@ func (linker *connect) GetC() chan interface{} {
 
 // WriteString 写入字符串数据.
 func (linker *connect) WriteString(strs ...string) (err error) {
-	str := format(strs...)
+	b := format(strs...)
 	defer func() {
 		if e := recover(); e != nil {
 			if err, ok := e.(error); ok {
@@ -171,15 +171,14 @@ func (linker *connect) WriteString(strs ...string) (err error) {
 			}
 		}
 	}()
-
-	len := len(str)
-	var s, n int
-	for len >= s {
-		n, err =fmt.Fprint(linker.conn, str)
+	l := len(b)
+	var count, n int
+	for count < l {
+		n, err = linker.conn.Write(b[count:])
 		if err != nil {
-			return  err
+			return nil
 		}
-		s += n
+		count += n
 	}
 
 	return nil
@@ -252,7 +251,7 @@ func (linker *connect) ReadLenLine() (int, error) {
 	if l <= 1 {
 		return 0, errors.New("-1")
 	}
-	b = b[:l-1]
+	b = b[:l - 1]
 
 	l, err = strconv.Atoi(string(b))
 
@@ -294,18 +293,12 @@ func (linker *connect) Close() error {
 }
 
 // format 格式数据.
-func format(strs ...string) (string) {
-	if len(strs) < 1 {
-
-		return ""
-	}
-
+func format(strs ...string) ([]byte) {
 	buf := bytes.NewBuffer(nil)
 	fmt.Fprintf(buf, "*%d\n", len(strs))
-
 	for _, str := range strs {
 		fmt.Fprintf(buf, "$%d\n%s\n", len(str), str)
 	}
 
-	return buf.String()
+	return buf.Bytes()
 }
