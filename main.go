@@ -239,7 +239,6 @@ func getReturn(conn link.Connect, d [][]byte) (err error) {
 		SystemERR(conn, err)
 		return err
 	} else if ok {
-		fmt.Println(key)
 		return conn.WriteString("1", "成功", string(val))
 	}
 
@@ -252,7 +251,6 @@ func getReturn(conn link.Connect, d [][]byte) (err error) {
 			SystemERR(conn, err)
 			return err
 		} else if ok {
-			fmt.Println(key)
 			return conn.WriteString("1", "成功", string(val))
 		} else {
 			return conn.WriteString("404", "没有发现", string(val))
@@ -271,7 +269,6 @@ func getReturn(conn link.Connect, d [][]byte) (err error) {
 		return err
 	}
 
-	fmt.Println(key)
 	return conn.WriteString("1", "成功", string(val))
 }
 
