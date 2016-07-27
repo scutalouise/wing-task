@@ -231,45 +231,29 @@ func getReturn(conn link.Connect, d [][]byte) (err error) {
 			timeout = time.Second * time.Duration(tmp)
 		}
 	}
-
-	// 缓存中获取数据.
 	key := string(d[1])
-	val, ok, err := DefaultCache.Get(key)
+	var val []byte
+	ok := DefaultQueue.Exists(key)
+	if ok {
+		val, err = DefaultCache.GetAndTimeOut(key, timeout, conn.GetC())
+		if err != nil {
+			if err.Error() == "timeout" {
+				return conn.WriteString("408", "超时")
+			} else if err.Error() == "EOF" {
+				return err
+			}
+			SystemERR(conn, err)
+			return err
+		}
+		return conn.WriteString("1", "成功", string(val))
+	}
+	val, ok, err = DefaultCache.Get(key)
 	if err != nil {
 		SystemERR(conn, err)
 		return err
 	} else if ok {
 		return conn.WriteString("1", "成功", string(val))
 	}
-
-	//  判定队列是否存在该数据.
-	ok = DefaultQueue.Exists(key)
-	if !ok {
-		// 队列数据不存在.
-		val, ok, err := DefaultCache.Get(key)
-		if err != nil {
-			SystemERR(conn, err)
-			return err
-		} else if ok {
-			return conn.WriteString("1", "成功", string(val))
-		} else {
-			return conn.WriteString("404", "没有发现", string(val))
-		}
-	}
-
-	// 等待获取值.
-	val, err = DefaultCache.GetAndTimeOut(key, timeout, conn.GetC())
-	if err != nil {
-		if err.Error() == "timeout" {
-			return conn.WriteString("408", "超时")
-		} else if err.Error() == "EOF" {
-			return err
-		}
-		SystemERR(conn, err)
-		return err
-	}
-
-	return conn.WriteString("1", "成功", string(val))
 }
 
 func addJob(conn link.Connect, d [][]byte) (err error) {
