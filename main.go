@@ -186,6 +186,7 @@ func isDirExists(path string) bool {
 // GetReturn 获取数据.
 func GetReturn(conn link.Connect, d [][]byte) {
 	err := getReturn(conn, d)
+	fmt.Println("getReturn")
 	logf(err)
 }
 
@@ -254,6 +255,8 @@ func getReturn(conn link.Connect, d [][]byte) (err error) {
 	} else if ok {
 		return conn.WriteString("1", "成功", string(val))
 	}
+
+	return  conn.WriteString("0", "不存在")
 }
 
 func addJob(conn link.Connect, d [][]byte) (err error) {
