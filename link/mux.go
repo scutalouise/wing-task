@@ -1,8 +1,6 @@
 package link
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"regexp"
 	"sync"
@@ -24,37 +22,13 @@ type muxEntry struct {
 }
 
 // 没有发现命令.
-func notFound(conn Connect, data [][]byte) {
-	str, _ := Format("404", "not found action")
-	conn.Write([]byte(str))
+func notFound(conn Connect, _ [][]byte) {
+	conn.WriteString("404", "not found action")
 }
 
 // exiting 退出程序中.
-func exiting(conn Connect, data [][]byte) {
-	str, _ := Format("0", "server exiting")
-	conn.Write([]byte(str))
-}
-
-// Format 格式化数据.
-func Format(strs ...string) (string, error) {
-	return format(strs)
-}
-
-// format 格式数据.
-func format(strs []string) (string, error) {
-	if len(strs) < 1 {
-
-		return "", errors.New("没有传值")
-	}
-
-	buf := bytes.NewBuffer(nil)
-	fmt.Fprintf(buf, "*%d\n", len(strs))
-
-	for _, str := range strs {
-		fmt.Fprintf(buf, "$%d\n%s\n", len(str), str)
-	}
-
-	return buf.String(), nil
+func exiting(conn Connect, _ [][]byte) {
+	conn.WriteString("0", "server exiting")
 }
 
 // parent 命令格式正则表达式.

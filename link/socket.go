@@ -11,8 +11,6 @@ type Hander interface {
 
 // Connect 网络请求的连接对象.
 type Connect interface {
-	// Write 写入数据.
-	Write(b []byte) error
 	// WriteString 写入字符串数据.
 	WriteString(strs ...string) error
 	// 读取指定大小数据.

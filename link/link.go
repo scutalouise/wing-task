@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"bytes"
+	"fmt"
 )
 
 // server 服务结构体.
@@ -159,45 +161,28 @@ func (linker *connect) GetC() chan interface{} {
 	return linker.C
 }
 
-// Write 写数据到连接.
-func (linker *connect) Write(b []byte) (err error) {
+// WriteString 写入字符串数据.
+func (linker *connect) WriteString(strs ...string) (err error) {
+	str := format(strs...)
 	defer func() {
 		if e := recover(); e != nil {
-			if er, ok := e.(error); ok {
-				err = er
+			if err, ok := e.(error); ok {
 				linker.logf("tcp: write error: %v; retrying in %v", err, linker.conn.RemoteAddr())
 			}
 		}
 	}()
 
-	len := len(b)
-	var s int
-	for s < len {
-		n, err := linker.write(b)
+	len := len(str)
+	var s, n int
+	for len >= s {
+		n, err =fmt.Fprint(linker.conn, str)
 		if err != nil {
-			linker.logf("tcp: write error: %v; retrying in %v", err, linker.conn.RemoteAddr())
-
-			return err
+			return  err
 		}
 		s += n
 	}
 
 	return nil
-}
-
-// WriteString 写入字符串数据.
-func (linker *connect) WriteString(strs ...string) error {
-	str, err := format(strs)
-	if err != nil {
-		return err
-	}
-	return linker.Write([]byte(str))
-}
-
-// write 写数据.
-func (linker *connect) write(b []byte) (n int, err error) {
-
-	return linker.conn.Write(b)
 }
 
 // StopServer 停止服务.
@@ -306,4 +291,21 @@ func (linker *connect) ReadSize(size int) ([]byte, error) {
 // Close.
 func (linker *connect) Close() error {
 	return linker.conn.Close()
+}
+
+// format 格式数据.
+func format(strs ...string) (string) {
+	if len(strs) < 1 {
+
+		return ""
+	}
+
+	buf := bytes.NewBuffer(nil)
+	fmt.Fprintf(buf, "*%d\n", len(strs))
+
+	for _, str := range strs {
+		fmt.Fprintf(buf, "$%d\n%s\n", len(str), str)
+	}
+
+	return buf.String()
 }
