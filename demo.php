@@ -6,10 +6,10 @@ function test1() {
     $task = new TaskClient();
     $task->connect("127.0.0.1", "9090");
     // key 是服务端生成的唯一值
-    if ($task->AddJob("test1", "data(添加数据)", $key)) {
+    if ($key = $task->AddJob("test1", "data(添加数据)")) {
 
         // 获取任务被执行后的值, 异常，超时
-        if($task->GetReturn($key, $data)) {
+        if (($data = $task->GetReturn($key)) !== false) {
             var_dump($data);
         } else {
             if ($task->GetErrNo() == 408) {
