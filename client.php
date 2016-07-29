@@ -205,21 +205,21 @@ class TaskClient
         }
 
         try {
-            $int = @socket_write(self::$socket, $str, strlen($str));
-            $this->doExt();
-            if ($int != strlen($str)) {
-                self::$errno = "-2";
-                self::$errmsg = "fail";
-
-                return false;
+            $count = 0;
+            $len = strlen($str);
+            while ($count < $len) {
+                $n = @socket_write(self::$socket, substr($str, $count));
+                $count += $n;
+                $this->doExt();
             }
+
             $ok = $this->getOneRequest();
         } catch (Exception $e) {
             return false;
         }
+
         $tmp = array();
         if ($ok !== false) {
-
             if ($ok[0] == 1) {
                 $len = count($ok);
                 for ($i = 2; $i < $len; $i++) {
@@ -273,6 +273,7 @@ class TaskClient
             $attr =strpos($buf, $delim);
             if ($attr === false) {
                 $buf = socket_read(self::$socket, 2048, PHP_BINARY_READ);
+                $this->doExt();
                 continue;
             }
             break;
@@ -289,6 +290,7 @@ class TaskClient
         while (true) {
             if (strlen($buf) < $size) {
                 $buf .= socket_read(self::$socket, $size, PHP_BINARY_READ);
+                $this->doExt();
             } else {
                 break;
             }
