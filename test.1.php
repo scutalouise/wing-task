@@ -24,7 +24,7 @@ function add() {
 
         foreach ($keys as $key) {
             if ($data = $c->GetReturn($key,3000)) {
-                var_dump("key:" . $key .  ", data22:" . $data);
+                var_dump("key:" . $key .  ", data:" . $data);
             } else {
                 var_dump($c->GetErrMsg());
             }
