@@ -29,7 +29,7 @@ function add() {
                 var_dump($c->GetErrMsg());
             }
         }
-        sleep(1);
+//        sleep(1);
     }
 }
 

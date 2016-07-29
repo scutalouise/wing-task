@@ -233,7 +233,7 @@ class TaskClient
             }
         }
 
-        return $tmp;
+        return false;
     }
 
     /**
