@@ -200,29 +200,22 @@ class TaskClient
      */
     private function finish($str, &$data = array())
     {
-        if (empty(self::$socket)) {
+        if (!self::$status) {
             $this->connect();
         }
         if (!self::$status) {
             return false;
         }
 
-        $int = @socket_write(self::$socket, $str);
-        self::$errno = socket_last_error(self::$socket);
-        if (!empty(self::$errno)) {
-            self::$errmsg = socket_strerror(self::$errno);
-
-            return false;
-        }
-        if ($int != strlen($str)) {
-            self::$errno = "-2";
-            self::$errmsg = "fail";
-
-            return false;
-        }
-
-        $tmp = array();
         try {
+            $int = @socket_write(self::$socket, $str, strlen($str));
+            $this->doExt();
+            if ($int != strlen($str)) {
+                self::$errno = "-2";
+                self::$errmsg = "fail";
+
+                return false;
+            }
             $ok = $this->getOneRequest($d);
         } catch (Exception $e) {
             return false;

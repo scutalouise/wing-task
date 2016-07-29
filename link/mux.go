@@ -11,8 +11,8 @@ type HandlerFunc func(Connect, [][]byte)
 
 // ServeMux 动作注册存储.
 type ServeMux struct {
-	sync.RWMutex                      // 锁.
-	m            map[string]*muxEntry //  动作集合.
+	sync.RWMutex           // 锁.
+	m map[string]*muxEntry //  动作集合.
 }
 
 // muxEntry 动作信息.

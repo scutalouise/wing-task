@@ -10,10 +10,10 @@ import (
 
 // Block 大盒子.
 type Block struct {
-	sync.RWMutex                                             // 数据锁.
-	dur          time.Duration                               // GC垃圾回收周期.
-	buckets      []map[string]*Item                          // 原始数据.
-	channels     map[string]map[chan interface{}]interface{} // 注册事件, 用户订阅指定的keycache，当key数据存在时候，则通知订阅者.
+	sync.RWMutex                                         // 数据锁.
+	dur      time.Duration                               // GC垃圾回收周期.
+	buckets  []map[string]*Item                          // 原始数据.
+	channels map[string]map[chan interface{}]interface{} // 注册事件, 用户订阅指定的keycache，当key数据存在时候，则通知订阅者.
 }
 
 // Item 数据存储项.

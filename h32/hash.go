@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"crypto/md5"
+	"encoding/hex"
 )
 
 // H32 Hash.
@@ -29,20 +31,21 @@ func (h *h32) Init() {
 
 // GetUID 获取一个唯一KEY.
 func (h *h32) GetUID() string {
-	h.n++
+	h.Lock()
+	defer h.Unlock()
 
-	return strconv.FormatInt(int64(h.n), 32)
+	h.n++
+	return strconv.FormatInt(h.n, 32)
 }
 
 // GetOffset key在数组的偏移.
 func (h *h32) GetOffset(key string, blockSize, bucketSize int64) int64 {
-	key64, err := strconv.ParseInt(key, 32, 64)
-	if err != nil {
+	h32 := convertMD5(key)
+	hash, _ := strconv.ParseInt(h32[:8], 32, 64)
 
-		return 0
-	}
+	i := hash / bucketSize % blockSize
 
-	return key64 / bucketSize % blockSize
+	return i
 }
 
 // NewHash 初始化，获取当前毫秒时间戳.
@@ -51,6 +54,14 @@ func NewHash() H32 {
 	h.Init()
 
 	return h
+}
+
+// convertMD5 加密
+func convertMD5(str string) string {
+	md5Ctx := md5.New()
+	md5Ctx.Write([]byte(str))
+
+	return hex.EncodeToString(md5Ctx.Sum(nil))
 }
 
 // DefaultHash 默认获取一个KEY生成器.

@@ -62,7 +62,7 @@ func main() {
 func Start() {
 
 	// 检查服务.
-	conn, err := net.DialTimeout("tcp", DefaultConfig.Address, time.Second*3)
+	conn, err := net.DialTimeout("tcp", DefaultConfig.Address, time.Second * 3)
 	if err == nil {
 		linker := link.NewConnect(conn)
 		defer linker.Close()
@@ -91,7 +91,7 @@ func Start() {
 
 // Stop 关闭服务.
 func Stop() {
-	conn, err := net.DialTimeout("tcp", DefaultConfig.Address, time.Second*3)
+	conn, err := net.DialTimeout("tcp", DefaultConfig.Address, time.Second * 3)
 	if err == nil {
 		linker := link.NewConnect(conn)
 		defer linker.Close()
@@ -134,12 +134,6 @@ func StartServer() {
 	fmt.Println("完成退出")
 }
 
-// AddJob 添加任务.
-func AddJob(conn link.Connect, d [][]byte) {
-	err := addJob(conn, d)
-	logf(err)
-}
-
 // NewConfig 创建默认配置.
 func NewConfig(addr, logFilename string) *Config {
 	c := &Config{
@@ -163,12 +157,12 @@ func (conf *Config) Init() {
 				os.Exit(1)
 			}
 		}
-		logFile, logErr := os.OpenFile(conf.Filename, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+		logFile, logErr := os.OpenFile(conf.Filename, os.O_CREATE | os.O_RDWR | os.O_APPEND, 0666)
 		if logErr != nil {
 			fmt.Println("Fail to find", logErr.Error(), "cServer start Failed")
 			os.Exit(1)
 		}
-		l = log.New(logFile, "", log.Ldate|log.Ltime|log.Lshortfile)
+		l = log.New(logFile, "", log.Ldate | log.Ltime | log.Lshortfile)
 	}
 	conf.Log = l
 }
@@ -185,46 +179,10 @@ func isDirExists(path string) bool {
 
 // GetReturn 获取数据.
 func GetReturn(conn link.Connect, d [][]byte) {
-	err := getReturn(conn, d)
-	fmt.Println("getReturn")
-	logf(err)
-}
-
-// StopServer 停止服务.
-func StopServer(conn link.Connect, d [][]byte) {
-	conn.StopServer()
-	conn.WriteString("1", "暂停服务中")
-}
-
-// Status 服务状态.
-func Status(conn link.Connect, d [][]byte) {
-	conn.WriteString("1", "运行中")
-}
-
-// Usr1 有数据通知.
-func Usr1(conn link.Connect, d [][]byte) {
-	err := usr1(conn, d)
-	logf(err)
-}
-
-// GetJob 获取任务对象.
-func GetJob(conn link.Connect, d [][]byte) {
-	err := getJob(conn, d)
-	logf(err)
-}
-
-// SetReturn 设置数据.
-func SetReturn(conn link.Connect, d [][]byte) {
-	err := setReturn(conn, d)
-	logf(err)
-}
-
-func getReturn(conn link.Connect, d [][]byte) (err error) {
-	l := len(d)
-	if l < 2 {
-		return conn.WriteString("405", "请传key")
+	if len(d) < 2 {
+		ERRVAR(conn)
+		return
 	}
-
 	timeout := time.Minute
 	if d[2] != nil {
 		tmp, err := strconv.Atoi(string(d[2]))
@@ -234,103 +192,129 @@ func getReturn(conn link.Connect, d [][]byte) (err error) {
 	}
 	key := string(d[1])
 	var val []byte
-	ok := DefaultQueue.Exists(key)
+	var err error
+	var ok bool
+	ok = DefaultQueue.Exists(key)
 	if ok {
 		val, err = DefaultCache.GetAndTimeOut(key, timeout, conn.GetC())
 		if err != nil {
 			if err.Error() == "timeout" {
-				return conn.WriteString("408", "超时")
-			} else if err.Error() == "EOF" {
-				return err
+				conn.WriteString("408", "超时")
+			} else if (err.Error() != "EOF") {
+				logf(err)
+				SystemERR(conn, err)
 			}
-			SystemERR(conn, err)
-			return err
+			return
 		}
-		return conn.WriteString("1", "成功", string(val))
+		conn.WriteString("1", "成功", string(val))
+		return
 	}
+
 	val, ok, err = DefaultCache.Get(key)
 	if err != nil {
 		SystemERR(conn, err)
-		return err
-	} else if ok {
-		return conn.WriteString("1", "成功", string(val))
-	}
-
-	return  conn.WriteString("0", "不存在")
-}
-
-func addJob(conn link.Connect, d [][]byte) (err error) {
-	l := len(d)
-	if l < 3 {
-		return conn.WriteString("405", "参数错误")
-	}
-	d = d[:3]
-	key := DefaultH32.GetUID()
-	err = DefaultQueue.Join(string(d[1]), key, d[2])
-	if err != nil {
-		SystemERR(conn, err)
+		logf(err)
 		return
 	}
-	return conn.WriteString("1", "成功", key)
+	if ok {
+		conn.WriteString("1", "成功", string(val))
+		return
+	}
+	conn.WriteString("0", "不存在")
+
 }
 
-func usr1(conn link.Connect, d [][]byte) (err error) {
-	l := len(d)
-	if l < 2 {
-		return conn.WriteString("405", "参数错误")
+// StopServer 停止服务.
+func StopServer(conn link.Connect, _ [][]byte) {
+	conn.WriteString("1", "暂停服务中")
+	conn.StopServer()
+}
+
+// Status 服务状态.
+func Status(conn link.Connect, _ [][]byte) {
+	conn.WriteString("1", "运行中")
+}
+
+// Usr1 有数据通知.
+func Usr1(conn link.Connect, d [][]byte) {
+	if len(d) < 2 {
+		conn.WriteString("405", "参数错误")
 	}
-	d = d[:2]
+
 	ok, err := DefaultQueue.Usr1(string(d[1]), conn.GetC())
 	if err != nil {
 		if err.Error() == "EOF" {
 			return
 		}
 		SystemERR(conn, err)
-		return
+		logf(err)
 	} else if ok {
-		return conn.WriteString("1", "成功")
+		conn.WriteString("1", "成功")
+	} else {
+		conn.WriteString("0", "失败")
 	}
-	SystemERR(conn, err)
-	return
 }
 
-func getJob(conn link.Connect, d [][]byte) (err error) {
+// AddJob 添加任务.
+func AddJob(conn link.Connect, d [][]byte) {
 	l := len(d)
-	if l < 2 {
-		return conn.WriteString("405", "参数错误")
+	if l < 3 {
+		ERRVAR(conn)
+		return
 	}
-	d = d[:2]
+	key := DefaultH32.GetUID()
+	err := DefaultQueue.Join(string(d[1]), key, d[2])
+	if err != nil {
+		SystemERR(conn, err)
+	} else {
+		conn.WriteString("1", "成功", key)
+	}
+}
+
+// GetJob 获取任务对象.
+func GetJob(conn link.Connect, d [][]byte) {
+	if len(d) < 2 {
+		ERRVAR(conn)
+		return
+	}
+
 	key, val, err := DefaultQueue.GetAndDoing(string(d[1]), conn)
 	if err != nil {
 		SystemERR(conn, err)
 		return
 	} else if key == "" || val == nil {
-		return conn.WriteString("0", "没有拿到")
+		conn.WriteString("0", "NULL")
 	}
 
-	return conn.WriteString("1", "成功", key, string(val))
+	conn.WriteString("1", "成功", key, string(val))
 }
 
-func setReturn(conn link.Connect, d [][]byte) (err error) {
-	l := len(d)
-	if l < 3 {
-		return conn.WriteString("405", "参数错误")
+// SetReturn 设置数据.
+func SetReturn(conn link.Connect, d [][]byte) {
+	if len(d) < 3 {
+		ERRVAR(conn)
 	}
-	d = d[:3]
 	key := string(d[1])
 	ok, err := DefaultQueue.Finish(key, conn)
 	if err != nil {
 		SystemERR(conn, err)
 		return
-	} else if !ok {
-		return conn.WriteString("404", "不存在")
 	}
-	err = DefaultCache.Set(key, d[2], time.Minute*10)
+	if !ok {
+		conn.WriteString("404", "不存在")
+	}
+	err = DefaultCache.Set(key, d[2], time.Minute * 10)
 	if err != nil {
 		SystemERR(conn, err)
 		return
 	}
-	return conn.WriteString("1", "成功")
+
+	conn.WriteString("1", "成功")
+}
+
+// ERRVAR 传参错误.
+func ERRVAR(conn link.Connect) {
+	conn.WriteString("405", "参数错误")
 }
 
 // EOF 连接断开回调函数.
@@ -341,8 +325,7 @@ func EOF(conn interface{}) {
 
 // SystemERR 系统异常.
 func SystemERR(conn link.Connect, err error) {
-	err = conn.WriteString("-1", "系统异常")
-	logf(err)
+	conn.WriteString("-1", "系统异常")
 }
 
 func logf(err error) {

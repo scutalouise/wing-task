@@ -10,11 +10,11 @@ import (
 
 // queue 队列结构体.
 type queue struct {
-	sync.RWMutex                                        // 读写锁.
-	tube         map[string]*li                         // 队列排队.
-	log          map[interface{}]map[string]interface{} // 记录单个任务doing状态的key.
-	db           []map[string]*job                      // 原始数据.
-	dur          time.Duration                          // 垃圾回收周期.
+	sync.RWMutex                                // 读写锁.
+	tube map[string]*li                         // 队列排队.
+	log  map[interface{}]map[string]interface{} // 记录单个任务doing状态的key.
+	db   []map[string]*job                      // 原始数据.
+	dur  time.Duration                          // 垃圾回收周期.
 }
 
 // job 任务信息.
@@ -104,7 +104,7 @@ func (Q *queue) GetAndDoing(tube string, conn interface{}) (key string, value []
 	defer Q.Unlock()
 
 	if tubes, ok := Q.tube[tube]; ok {
-	GO:
+		GO:
 		if key, ok, err := tubes.list.Out(); ok && err == nil {
 			off := h32.DefaultHash.GetOffset(key, BlockSize, BucketSize)
 			if bucket := Q.db[off]; bucket != nil {
@@ -182,7 +182,7 @@ func (Q *queue) itemExpiredQueue(queue string) error {
 	defer Q.Unlock()
 
 	if list, ok := Q.tube[queue]; ok {
-		if time.Now().Sub(list.updateTime) > time.Hour*24 {
+		if time.Now().Sub(list.updateTime) > time.Hour * 24 {
 			delete(Q.tube, queue)
 		}
 	}
