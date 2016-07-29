@@ -97,9 +97,9 @@ class TaskClient
     public function AddJob($tube, $data, &$key = '')
     {
         $str = $this->format(array("AddJob", $tube, $data));
-        $ok = $this->finish($str, $tmp);
-        if ($ok) {
-            $key = $tmp[0];
+        $ok = $this->finish($str);
+        if ($ok !== false) {
+            $key = $ok[0];
 
             return true;
         }
@@ -119,10 +119,10 @@ class TaskClient
     public function GetJob($tube, &$key, &$data)
     {
         $str = $this->format(array("GetJob", $tube));
-        $ok = $this->finish($str, $tmp);
-        if ($ok) {
-            $key = $tmp[0];
-            $data = $tmp[1];
+        $ok = $this->finish($str);
+        if ($ok !== false) {
+            $key = $ok[0];
+            $data = $ok[1];
 
             return true;
         }
@@ -143,9 +143,9 @@ class TaskClient
     public function GetReturn($key, &$data, $timeout)
     {
         $str = $this->format(array("GetReturn", $key, $timeout));
-        $ok = $this->finish($str, $tmp);
-        if ($ok) {
-            $data = $tmp[0];
+        $ok = $this->finish($str);
+        if ($ok !== false) {
+            $data = $ok[0];
 
             return true;
         }
@@ -164,8 +164,8 @@ class TaskClient
     public function SetReturn($key, $data)
     {
         $str = $this->format(array("SetReturn", $key, $data));
-        $ok = $this->finish($str, $tmp);
-        if ($ok) {
+        $ok = $this->finish($str);
+        if ($ok !== false) {
             return true;
         }
 
@@ -182,8 +182,8 @@ class TaskClient
     public function Usr1($tube)
     {
         $str = $this->format(array("Usr1", $tube));
-        $ok = $this->finish($str, $tmp);
-        if ($ok) {
+        $ok = $this->finish($str);
+        if ($ok !== false) {
             return true;
         }
 
@@ -194,11 +194,10 @@ class TaskClient
      * 完成一个网络请求.
      *
      * @param string $str  数据.
-     * @param array  $data $返回数据.
      *
      * @return boolean
      */
-    private function finish($str, &$data = array())
+    private function finish($str)
     {
         if (!self::$status) {
             $this->connect();
@@ -216,22 +215,23 @@ class TaskClient
 
                 return false;
             }
-            $ok = $this->getOneRequest($d);
+            $ok = $this->getOneRequest();
         } catch (Exception $e) {
             return false;
         }
-        if ($ok) {
-            if ($d[0] == 1) {
-                $len = count($d);
-                for ($i = 2; $i < $len; $i++) {
-                    $tmp[] = $d[$i];
-                }
-                $data = $tmp;
+        $tmp = array();
+        if ($ok !== false) {
 
-                return true;
+            if ($ok[0] == 1) {
+                $len = count($ok);
+                for ($i = 2; $i < $len; $i++) {
+                    $tmp[] = $ok[$i];
+                }
+
+                return $tmp;
             } else {
-                self::$errno = $d[0];
-                self::$errmsg = $d[1];
+                self::$errno = $ok[0];
+                self::$errmsg = $ok[1];
             }
         }
 
@@ -241,38 +241,36 @@ class TaskClient
     /**
      * 获取一个完整的请求结果.
      *
-     * @param array $data 返回的数据.
-     *
      * @return boolean
      */
-    private function getOneRequest(&$data)
+    private function getOneRequest()
     {
-        // 查询到头
-        $len = 0;
-        while ($str = @socket_read(self::$socket, 1024, PHP_NORMAL_READ)) {
-            $attr = strpos($str, "*");
-            if ($attr !== false) {
-                $len = substr($str, $attr + 1);
-                break;
-            }
+
+        $data = array();
+        $replay = @socket_read(self::$socket, 100, PHP_NORMAL_READ);
+        $replay = trim($replay);
+        if (substr($replay, 0, 1) != "*") {
+            self::$errno = -1;
+            self::$errmsg = '数据异常';
+            return false;
         }
-        $this->doExt();
-        for ($i = 0; $i < $len; $i++) {
-            while ($str = @socket_read(self::$socket, 1024, PHP_NORMAL_READ)) {
-                $attr = strpos($str, "$");
-                if ($attr !== false) {
-                    $l = substr($str, $attr + 1);
-                    $data[$i] = @socket_read(self::$socket, intval($l), PHP_BINARY_READ);
-                    if ($l <= 0) {
-                        $data[$i] = '';
-                    }
-                    break;
-                }
+        $size = intval(substr($replay,1));
+        for ($i = 0; $i < $size; $i++) {
+            $replay = @socket_read(self::$socket, 100, PHP_NORMAL_READ);
+            $replay = trim($replay);
+            if (substr($replay, 0, 1) != "$") {
+                self::$errno = -1;
+                self::$errmsg = '数据异常';
+                return false;
             }
-            $this->doExt();
+            $dataSize = intval(substr($replay, 1));
+            $tmp = socket_read(self::$socket, $dataSize + 1, PHP_BINARY_READ);
+            $data[] = trim($tmp);
         }
 
-        return true;
+        $this->doExt();
+
+        return $data;
     }
 
     private function  doExt() {

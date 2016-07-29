@@ -201,12 +201,12 @@ func GetReturn(conn link.Connect, d [][]byte) {
 			if err.Error() == "timeout" {
 				conn.WriteString("408", "超时")
 			} else if (err.Error() != "EOF") {
-				logf(err)
 				SystemERR(conn, err)
+				logf(err)
 			}
 			return
 		}
-		conn.WriteString("1", "成功", string(val))
+		conn.WriteString("1", "获取成功", string(val))
 		return
 	}
 
@@ -217,11 +217,10 @@ func GetReturn(conn link.Connect, d [][]byte) {
 		return
 	}
 	if ok {
-		conn.WriteString("1", "成功", string(val))
+		conn.WriteString("1", "获取成功", string(val))
 		return
 	}
 	conn.WriteString("0", "不存在")
-
 }
 
 // StopServer 停止服务.
@@ -249,7 +248,7 @@ func Usr1(conn link.Connect, d [][]byte) {
 		SystemERR(conn, err)
 		logf(err)
 	} else if ok {
-		conn.WriteString("1", "成功")
+		conn.WriteString("1", "Usr1成功")
 	} else {
 		conn.WriteString("0", "失败")
 	}
@@ -266,8 +265,9 @@ func AddJob(conn link.Connect, d [][]byte) {
 	err := DefaultQueue.Join(string(d[1]), key, d[2])
 	if err != nil {
 		SystemERR(conn, err)
+		logf(err)
 	} else {
-		conn.WriteString("1", "成功", key)
+		conn.WriteString("1", "添加任务成功", key)
 	}
 }
 
@@ -281,12 +281,14 @@ func GetJob(conn link.Connect, d [][]byte) {
 	key, val, err := DefaultQueue.GetAndDoing(string(d[1]), conn)
 	if err != nil {
 		SystemERR(conn, err)
+		logf(err)
 		return
 	} else if key == "" || val == nil {
 		conn.WriteString("0", "NULL")
+		return
 	}
 
-	conn.WriteString("1", "成功", key, string(val))
+	conn.WriteString("1", "获取任务成功", key, string(val))
 }
 
 // SetReturn 设置数据.
@@ -295,21 +297,23 @@ func SetReturn(conn link.Connect, d [][]byte) {
 		ERRVAR(conn)
 	}
 	key := string(d[1])
-	ok, err := DefaultQueue.Finish(key, conn)
+	var ok bool
+	err := DefaultCache.Set(key, d[2], time.Minute * 10)
 	if err != nil {
 		SystemERR(conn, err)
-		return
+		logf(err)
+	}
+	ok, err = DefaultQueue.Finish(key, conn)
+	if err != nil {
+		SystemERR(conn, err)
+		logf(err)
 	}
 	if !ok {
 		conn.WriteString("404", "不存在")
-	}
-	err = DefaultCache.Set(key, d[2], time.Minute * 10)
-	if err != nil {
-		SystemERR(conn, err)
 		return
 	}
 
-	conn.WriteString("1", "成功")
+	conn.WriteString("1", "设置结果成功")
 }
 
 // ERRVAR 传参错误.
