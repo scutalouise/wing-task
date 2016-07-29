@@ -23,10 +23,11 @@ class TaskClient
     private static $errmsg  = "";
 
     /**
-    * @param string  $address 网络连接地址.
-    * @param integer $port    端口.
-    */
-    public function __construct($address = '', $port = 0) {
+     * @param string  $address 网络连接地址.
+     * @param integer $port    端口.
+     */
+    public function __construct($address = '', $port = 0)
+    {
         if (!empty($address)) {
             self::$address = $address;
         }
@@ -39,6 +40,7 @@ class TaskClient
             $this->connect(self::$address, self::$port);
         }
     }
+
     /**
      * 连接网络对象.
      *
@@ -90,18 +92,16 @@ class TaskClient
      *
      * @param string $tube 队列名称.
      * @param string $data 数据.
-     * @param string &$key 如果成功,添加到队列后,返回的唯一KEY.
      *
      * @return boolean
      */
-    public function AddJob($tube, $data, &$key = '')
+    public function AddJob($tube, $data)
     {
         $str = $this->format(array("AddJob", $tube, $data));
         $ok = $this->finish($str);
         if ($ok !== false) {
-            $key = $ok[0];
 
-            return true;
+            return $ok[0];
         }
 
         return false;
@@ -111,18 +111,18 @@ class TaskClient
      * 获取一个任务.
      *
      * @param string $tube 队列名称.
-     * @param string $key  任务唯一标示KEY.
-     * @param string $data 数据.
+     * @param string &$_key  任务唯一标示KEY.
+     * @param string &$_tmp 数据.
      *
      * @return bool
      */
-    public function GetJob($tube, &$key, &$data)
+    public function GetJob($tube, &$_key, &$_tmp)
     {
         $str = $this->format(array("GetJob", $tube));
         $ok = $this->finish($str);
         if ($ok !== false) {
-            $key = $ok[0];
-            $data = $ok[1];
+            $_key = $ok[0];
+            $_tmp = $ok[1];
 
             return true;
         }
@@ -134,20 +134,18 @@ class TaskClient
     /**
      * 获取任务完成的结果.
      *
-     * @param string $key  唯一标示KEY.
-     * @param string $data 数据.
+     * @param string $key     唯一标示KEY.
      * @param string $timeout 超时.
      *
      * @return boolean
      */
-    public function GetReturn($key, &$data, $timeout)
+    public function GetReturn($key, $timeout)
     {
         $str = $this->format(array("GetReturn", $key, $timeout));
         $ok = $this->finish($str);
         if ($ok !== false) {
-            $data = $ok[0];
 
-            return true;
+            return $ok[0];
         }
 
         return false;
@@ -193,7 +191,7 @@ class TaskClient
     /**
      * 完成一个网络请求.
      *
-     * @param string $str  数据.
+     * @param string $str 数据.
      *
      * @return boolean
      */
@@ -235,7 +233,7 @@ class TaskClient
             }
         }
 
-        return false;
+        return $tmp;
     }
 
     /**
@@ -245,35 +243,65 @@ class TaskClient
      */
     private function getOneRequest()
     {
-
+        $buf = "";
         $data = array();
-        $replay = @socket_read(self::$socket, 100, PHP_NORMAL_READ);
-        $replay = trim($replay);
-        if (substr($replay, 0, 1) != "*") {
-            self::$errno = -1;
-            self::$errmsg = '数据异常';
-            return false;
-        }
-        $size = intval(substr($replay,1));
-        for ($i = 0; $i < $size; $i++) {
-            $replay = @socket_read(self::$socket, 100, PHP_NORMAL_READ);
-            $replay = trim($replay);
-            if (substr($replay, 0, 1) != "$") {
-                self::$errno = -1;
-                self::$errmsg = '数据异常';
+        $this->readString($buf, "*");
+        $len = $this->readString($buf, "\n");
+        $len = intval(trim($len));
+        for ($i = 0; $i < $len; $i++) {
+            $ok = $this->readString($buf, "$");
+            if ($ok === false) {
                 return false;
             }
-            $dataSize = intval(substr($replay, 1));
-            $tmp = socket_read(self::$socket, $dataSize + 1, PHP_BINARY_READ);
-            $data[] = trim($tmp);
+            $ok = $dataSize = $this->readString($buf, "\n");
+            if ($ok === false) {
+                return false;
+            }
+            $ok = $dataSize = intval(trim($dataSize));
+            if ($ok === false) {
+                return false;
+            }
+            $data[] = $this->readSize($buf, $dataSize);
         }
-
-        $this->doExt();
 
         return $data;
     }
 
-    private function  doExt() {
+    private function readString(&$buf, $delim = "\n")
+    {
+        while (true) {
+            $attr =strpos($buf, $delim);
+            if ($attr === false) {
+                $buf = socket_read(self::$socket, 2048, PHP_BINARY_READ);
+                continue;
+            }
+            break;
+        }
+        
+        $str = substr($buf, 0, $attr + 1);
+        $buf = substr($buf, $attr + 1);
+        
+        return $str;
+    }
+
+    private function readSize(&$buf, $size) {
+
+        while (true) {
+            if (strlen($buf) < $size) {
+                $buf .= socket_read(self::$socket, $size, PHP_BINARY_READ);
+            } else {
+                break;
+            }
+        }
+
+        $str = substr($buf, 0, $size);
+        $buf = substr($buf, $size);
+
+        return $str;
+    }
+
+    private function doExt()
+    {
         self::$errno = socket_last_error(self::$socket);
         if (!empty(self::$errno)) {
             self::$errmsg = socket_strerror(self::$errno);
