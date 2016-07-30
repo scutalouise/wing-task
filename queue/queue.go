@@ -15,13 +15,13 @@ type Queue interface {
 	// Join 向队列中，添加一个任务.
 	Join(tube, key string, value []byte) error
 	// Finish 完成一个任务.
-	Finish(key string, conn interface{}) (bool, error)
+	Finish(key string, conn interface{}) bool
 	// GetAndDoing 获取一个任务，修改任务状态为正在开始中.
-	GetAndDoing(tube string, conn interface{}) (key string, value []byte, err error)
+	GetAndDoing(tube string, conn interface{}) (string, []byte, bool)
 	// Exists 判定一个人是否存在, 该任务必须为未开始，正在完成中.
 	Exists(key string) bool
 	// RestoreOne 还原一个任务.
-	RestoreOne(tube string, conn interface{}) (bool, error)
+	RestoreOne(tube string, conn interface{}) bool
 	// Usr1 添加一个通知，如果有数据，通知用户.
 	Usr1(tube string, ch chan interface{}) (bool, error)
 	// RestoreAll 还原一个连接对象正在做的任务进行还原.

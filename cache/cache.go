@@ -15,7 +15,7 @@ type Cache interface {
 	// Set 向缓存中，添加一个值.
 	Set(key string, value []byte, lifespan time.Duration) error
 	// Get 获取一个值.
-	Get(key string) ([]byte, bool, error)
+	Get(key string) ([]byte, bool)
 	// Cover 将一个已经存在的值，覆盖.
 	Cover(key string, value []byte) (bool, error)
 	// GetAndTimeOut 获取一个值且有时间限制.
@@ -23,7 +23,7 @@ type Cache interface {
 	// ClearAll 清空缓存.
 	ClearAll() error
 	// Delete 删除一个缓存.
-	Delete(key string) error
+	Delete(key string) bool
 	// 定时回收数据.
 	StartAndGC() error
 }

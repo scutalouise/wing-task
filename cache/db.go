@@ -70,7 +70,7 @@ func (box *Block) Cover(key string, value []byte) (bool, error) {
 }
 
 // Get 获取一个值.
-func (box *Block) Get(key string) ([]byte, bool, error) {
+func (box *Block) Get(key string) ([]byte, bool) {
 	off := h32.DefaultHash.GetOffset(key, BlockSize, BucketSize)
 	box.Lock()
 	defer box.Unlock()
@@ -78,15 +78,15 @@ func (box *Block) Get(key string) ([]byte, bool, error) {
 	if bucket := box.buckets[off]; bucket != nil {
 		if itm, ok := bucket[key]; ok {
 
-			return itm.value, ok, nil
+			return itm.value, ok
 		}
 	}
 
-	return nil, false, nil
+	return nil, false
 }
 
 // Delete 删除.
-func (box *Block) Delete(key string) error {
+func (box *Block) Delete(key string) bool {
 	off := h32.DefaultHash.GetOffset(key, BlockSize, BucketSize)
 	box.Lock()
 	defer box.Unlock()
@@ -94,17 +94,19 @@ func (box *Block) Delete(key string) error {
 	if bucket := box.buckets[off]; bucket != nil {
 		if _, ok := bucket[key]; ok {
 			delete(bucket, key)
+
+			return true
 		}
 	}
 	delete(box.channels, key)
 
-	return nil
+	return false
 }
 
 // GetAndTimeOut 获取值带有超时限制.
 func (box *Block) GetAndTimeOut(key string, timeout time.Duration, ch chan interface{}) (b []byte, err error) {
 	c := box.registerMessage(key)
-	b, ok, err := box.Get(key)
+	b, ok := box.Get(key)
 	if err != nil || ok {
 
 		return b, err
@@ -114,7 +116,7 @@ func (box *Block) GetAndTimeOut(key string, timeout time.Duration, ch chan inter
 	defer tick.Stop()
 	select {
 	case <-c:
-		b, ok, err = box.Get(key)
+		b, ok = box.Get(key)
 	case <-ch:
 		err = errors.New("EOF")
 	case <-tick.C:

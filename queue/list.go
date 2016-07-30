@@ -75,7 +75,7 @@ func (Q *queue) Join(tube, key string, value []byte) error {
 }
 
 // Finish 完成一个任务.
-func (Q *queue) Finish(key string, conn interface{}) (bool, error) {
+func (Q *queue) Finish(key string, conn interface{}) bool {
 	Q.Lock()
 	defer Q.Unlock()
 
@@ -91,21 +91,21 @@ func (Q *queue) Finish(key string, conn interface{}) (bool, error) {
 			if m, ok := Q.log[conn]; ok {
 				delete(m, key)
 			}
-			return true, nil
+			return true
 		}
 	}
 
-	return false, nil
+	return false
 }
 
 // GetAndDoing 获取一个任务，修改任务状态为正在开始中.
-func (Q *queue) GetAndDoing(tube string, conn interface{}) (key string, value []byte, err error) {
+func (Q *queue) GetAndDoing(tube string, conn interface{}) (string, []byte, bool) {
 	Q.Lock()
 	defer Q.Unlock()
 
 	if tubes, ok := Q.tube[tube]; ok {
 		GO:
-		if key, ok, err := tubes.list.Out(); ok && err == nil {
+		if key, ok := tubes.list.Out(); ok {
 			off := h32.DefaultHash.GetOffset(key, BlockSize, BucketSize)
 			if bucket := Q.db[off]; bucket != nil {
 				if itm, ok := bucket[key]; ok {
@@ -118,7 +118,7 @@ func (Q *queue) GetAndDoing(tube string, conn interface{}) (key string, value []
 						}
 						logs[key] = nil
 
-						return key, itm.value, err
+						return key, itm.value, true
 					}
 					goto GO
 				}
@@ -126,7 +126,7 @@ func (Q *queue) GetAndDoing(tube string, conn interface{}) (key string, value []
 		}
 	}
 
-	return "", nil, err
+	return "", nil, false
 }
 
 // Exists 判定一个人是否存在, 该任务必须为未开始，正在完成中.
@@ -206,7 +206,7 @@ func (Q *queue) itemExpired(key string) {
 }
 
 // RestoreOne 还原一个任务.
-func (Q *queue) RestoreOne(key string, conn interface{}) (bool, error) {
+func (Q *queue) RestoreOne(key string, conn interface{}) bool {
 	Q.Lock()
 	defer Q.Unlock()
 
@@ -233,12 +233,12 @@ func (Q *queue) RestoreOne(key string, conn interface{}) (bool, error) {
 					delete(logs, key)
 				}
 
-				return true, nil
+				return true
 			}
 		}
 	}
 
-	return false, nil
+	return false
 }
 
 // Usr1 添加一个通知，如果有数据，通知用户.

@@ -5,7 +5,7 @@ type Listed interface {
 	// 入队.
 	Put(string) error
 	// 出队.
-	Out() (string, bool, error)
+	Out() (string, bool)
 	// 队列长度.
 	Length() int
 }
@@ -44,10 +44,10 @@ func (h *head) Put(b string) error {
 }
 
 // 取出一个数据.
-func (h *head) Out() (string, bool, error) {
+func (h *head) Out() (string, bool) {
 	if h.first == nil {
 
-		return "", false, nil
+		return "", false
 	}
 
 	val := h.first.value
@@ -60,7 +60,7 @@ func (h *head) Out() (string, bool, error) {
 		h.last = nil
 	}
 
-	return val, true, nil
+	return val, true
 }
 
 // 获取数据长度.
@@ -72,9 +72,11 @@ func (h *head) Length() int {
 // NewListed 新建一个链表.
 func NewListed() Listed {
 
-	return &head{
+	h := &head{
 		len:   0,
 		first: nil,
 		last:  nil,
 	}
+
+	return h
 }
