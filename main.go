@@ -239,10 +239,7 @@ func Usr1(conn link.Connect, d [][]byte) {
 	}
 
 	ok, err := DefaultQueue.Usr1(string(d[1]), conn.GetC())
-	if err != nil {
-		if err.Error() == "EOF" {
-			return
-		}
+	if err != nil && err.Error() != "EOF"{
 		SystemERR(conn, err)
 		logf(err)
 	} else if ok {
