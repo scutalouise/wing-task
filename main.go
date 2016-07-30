@@ -200,7 +200,9 @@ func GetReturn(conn link.Connect, d [][]byte) {
 		if err != nil {
 			if err.Error() == "timeout" {
 				conn.WriteString("408", "超时")
-			} else if (err.Error() != "EOF") {
+			} else if (err.Error() == "EOF") {
+				return
+			} else {
 				SystemERR(conn, err)
 				logf(err)
 			}
