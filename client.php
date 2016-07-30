@@ -249,18 +249,9 @@ class TaskClient
         $len = $this->readString($buf, "\n");
         $len = intval(trim($len));
         for ($i = 0; $i < $len; $i++) {
-            $ok = $this->readString($buf, "$");
-            if ($ok === false) {
-                return false;
-            }
-            $ok = $dataSize = $this->readString($buf, "\n");
-            if ($ok === false) {
-                return false;
-            }
-            $ok = $dataSize = intval(trim($dataSize));
-            if ($ok === false) {
-                return false;
-            }
+            $this->readString($buf, "$");
+            $dataSize = $this->readString($buf, "\n");
+            $dataSize = intval(trim($dataSize));
             $data[] = $this->readSize($buf, $dataSize);
         }
 
