@@ -10,7 +10,7 @@
     &nbsp;&nbsp;\*<p>
     &nbsp;&nbsp;\* @return string|false key 添加任务成功后返回一个唯一KEY.<p>
     &nbsp;&nbsp;**/<p>
-    &nbsp;&nbsp;addJob($tube,$data)
+    &nbsp;&nbsp;AddJob($tube,$data)
 </code>
 
 <h3>GetJob Worker端向任务队列获取任务.</h3>
@@ -47,10 +47,10 @@
     &nbsp;&nbsp;\*<p>
     &nbsp;&nbsp;\* @return bool 是否设置任务结果成功<p>
     &nbsp;&nbsp;\*\*/<p>
-    &nbsp;&nbsp;GetReturn($key)
+    &nbsp;&nbsp;SetReturn($key, $data)
 </code>
 
-<h3>Uer1 Worker向服务端提交一个事件注册,如果队列有新任务则返回.</h3>
+<h3>Usr1 Worker向服务端提交一个事件注册,如果队列有新任务则返回.</h3>
 
 <code>
     /\*\*<p>
@@ -58,7 +58,7 @@
     &nbsp;&nbsp;\*<p>
     &nbsp;&nbsp;\* @return bool<p>
     &nbsp;&nbsp;\*\*/<p>
-    &nbsp;&nbsp;Uer1($tube)
+    &nbsp;&nbsp;Usr1($tube)
 </code>
 
 
